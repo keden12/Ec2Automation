@@ -131,79 +131,83 @@ def test(got, expected):
     prefix = '  X '
   print('%s got: %s expected: %s' % (prefix, repr(got), repr(expected)))
 
-#creating the ec2 instance with predefined Security Group, Tags, UserData etc. It will update the ec2 instance and install apache.
-print ("Creating an ec2 Instance...")
-instance = ec2.create_instances(
-    ImageId='ami-047bb4163c506cd98',
-    MinCount=1,
-    MaxCount=1,
-    KeyName='InstanceKey',
-    InstanceType='t2.micro',
-      SecurityGroups=[
-        'SecurityGroup',
-    ],
-    TagSpecifications=[
-        {
-            'ResourceType':'instance',
-            'Tags': [
-                {
-                    'Key':'Name',
-                    'Value':'Assignment'
-                 },
-             ]
+def main():
+	#creating the ec2 instance with predefined Security Group, Tags, UserData etc. It will update the ec2 instance and install apache.
+	print ("Creating an ec2 Instance...")
+	instance = ec2.create_instances(
+		ImageId='ami-047bb4163c506cd98',
+		MinCount=1,
+		MaxCount=1,
+		KeyName='InstanceKey',
+		InstanceType='t2.micro',
+		  SecurityGroups=[
+			'SecurityGroup',
+		],
+		TagSpecifications=[
+			{
+				'ResourceType':'instance',
+				'Tags': [
+					{
+						'Key':'Name',
+						'Value':'Assignment'
+					 },
+				 ]
 
-         }],
-    UserData="""#!/bin/bash
-sudo yum update -y
-sudo yum install httpd -y
-sudo systemctl enable httpd"""
-)
+			 }],
+		UserData="""#!/bin/bash
+	sudo yum update -y
+	sudo yum install httpd -y
+	sudo systemctl enable httpd"""
+	)
 
-print ("Instance with the id "+instance[0].id+" has been created")
-print ("Waiting for the instance to start...")
+	print ("Instance with the id "+instance[0].id+" has been created")
+	print ("Waiting for the instance to start...")
 
-#looping until the instance is running (Using reload to refresh data)
-while instance[0].state['Name'] != "running":
-    time.sleep(0.1)
-    instance[0].reload()
+	#looping until the instance is running (Using reload to refresh data)
+	while instance[0].state['Name'] != "running":
+		time.sleep(0.1)
+		instance[0].reload()
 
-#setting another sleep after the instance has started for it to allow ssh
-time.sleep(50)
-print(instance[0].id+" is running, uploading script...")
+	#setting another sleep after the instance has started for it to allow ssh
+	time.sleep(50)
+	print(instance[0].id+" is running, uploading script...")
 
-#running and checking the status of the scp upload
-if copyFile():
-    print("script uploaded successfully, making sure the webserver is running...")
-    time.sleep(10)
-    # running the check_webserver.py script and getting the status
-    if checkWebServer():
-        print("web server is now running... creating an S3 bucket...")
-        # creating the bucket and getting the status (Fail or Pass)
-        if createBucket():
-            print("bucket created... uploading the image to the bucket...")
-            # uploading the image to the bucket and getting the status (Fail or Pass)
-            if putBucket():
-                print("Image uploaded successfully.. configuring web server...")
-                # writing the html code into the index.html file, using scp to copy it to my ec2 instance and copying the file using cp command to the var/www/html. Also getting the status of the operation.
-                if configureWebPage():
-                    print("Image can now be displayed using this link - http://"+instance[0].public_ip_address)
-                  # displaying apache log menu
-                    apacheLogs()
+	#running and checking the status of the scp upload
+	if copyFile():
+		print("script uploaded successfully, making sure the webserver is running...")
+		time.sleep(10)
+		# running the check_webserver.py script and getting the status
+		if checkWebServer():
+			print("web server is now running... creating an S3 bucket...")
+			# creating the bucket and getting the status (Fail or Pass)
+			if createBucket():
+				print("bucket created... uploading the image to the bucket...")
+				# uploading the image to the bucket and getting the status (Fail or Pass)
+				if putBucket():
+					print("Image uploaded successfully.. configuring web server...")
+					# writing the html code into the index.html file, using scp to copy it to my ec2 instance and copying the file using cp command to the var/www/html. Also getting the status of the operation.
+					if configureWebPage():
+						print("Image can now be displayed using this link - http://"+instance[0].public_ip_address)
+					  # displaying apache log menu
+						apacheLogs()
 
-                # if configureWebPage() has an Exception
-                else:
-                    print("Error configuring web server..")
-            # if putBucket() has an Exception
-            else:
-                print("Error uploading image..")
-        # if createBucket() has an Exception
-        else:
-            print("Error creating a bucket...")
-    # if checkWebServer() has an Exception
-    else:
-        print("Error checking web server, possibly script is missing!")
-# if copyFile() has an Exception
-else:
-    print("script uploading failed... please make sure the script is in your working directory")
+					# if configureWebPage() has an Exception
+					else:
+						print("Error configuring web server..")
+				# if putBucket() has an Exception
+				else:
+					print("Error uploading image..")
+			# if createBucket() has an Exception
+			else:
+				print("Error creating a bucket...")
+		# if checkWebServer() has an Exception
+		else:
+			print("Error checking web server, possibly script is missing!")
+	# if copyFile() has an Exception
+	else:
+		print("script uploading failed... please make sure the script is in your working directory")
 
+
+if __name__ == '__main__':
+	main()
 
